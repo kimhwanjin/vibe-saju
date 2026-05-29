@@ -172,6 +172,94 @@ const SajuCharacterBlock = ({ charData }) => {
   );
 };
 
+// Premium custom fallback report engine that generates highly-detailed (500+ characters), distinct, and dynamic reports.
+const getPremiumFallbackReport = (serviceType, result, partnerDetails = null) => {
+  if (!result) return "";
+
+  const name = result.name;
+  const gender = result.gender;
+  const dayMaster = result.dayMasterDesc || `${result.pillars.dayPillar.stem.name} 기운`;
+  const luckyColor = result.luckyGuides?.color || "청색/녹색";
+  const luckyItem = result.luckyGuides?.item || "목재 액세서리";
+  const luckyDirection = result.luckyGuides?.direction || "동쪽";
+  const luckySeason = result.luckyGuides?.season || "봄";
+  
+  // 오행 개수 구하기
+  const elementMok = result.elementsCount?.목 || 0;
+  const elementHwa = result.elementsCount?.화 || 0;
+  const elementTo = result.elementsCount?.토 || 0;
+  const elementGeum = result.elementsCount?.금 || 0;
+  const elementSu = result.elementsCount?.수 || 0;
+
+  if (serviceType === 'daewun') {
+    return `💎 [${name}] 님만을 위한 AI 프리미엄 평생 대운 및 5개년 세운(2026~2030) 심층 분석 보고서
+
+명리학에서 대운(大運)이란 10년마다 변화하는 거대한 환경적 파도이자 인생의 계절적 변화를 의미합니다. [${name}] 님의 명식 구조와 오행 에너지의 동적 흐름을 종합 스캔한 결과, 당신의 삶을 지탱하는 주된 에너지인 '${dayMaster}'의 기운은 인생의 청장년기 동안 스스로의 가치관을 대외적으로 관철하는 강력한 주체성 확립과 명예의 안착을 향해 도도히 흐르고 있습니다. 
+
+현재 [${name}] 님은 오행 분포 중 목(${elementMok}개), 화(${elementHwa}개), 토(${elementTo}개), 금(${elementGeum}개), 수(${elementSu}개)의 비율에 의해 고유한 원소적 흐름을 유지하고 있습니다. 이 비율에 근거하여 향후 5개년 동안 당신의 발자취를 비춰줄 구체적인 세운(歲運) 로드맵을 선사합니다.
+
+[향후 5개년 세운(2026-2030) 세부 라이프 디자인]
+
+1. 2026년 (병오년 - 丙午年): 화(火)의 뜨겁고 붉은 불길이 정점에 달하는 시기입니다. 당신이 품어왔던 아이디어나 잠재된 역량이 대중 앞에 찬란하게 드러나게 되며, SNS나 창작 활동, 대외 프레젠테이션 등에서 주변의 이목과 격찬을 받게 될 것입니다. 도전하고자 하는 진로가 있다면 망설이지 말고 첫 삽을 뜨기에 최고의 시기입니다.
+2. 2027년 (정미년 - 丁未年): 온화한 불꽃이 대지(土)를 온화하게 데워주는 해입니다. 앞서 벌여놓았던 확장적인 일들을 차분하게 내실화하며, 계약 체결이나 신뢰성 높은 장기 동반자적 관계를 든든하게 다지기에 적격인 해입니다.
+3. 2028년 (무신년 - 戊申年): 금(金)의 매서운 결단력과 무거운 대지(土)의 기운이 함께 들어오는 강건한 결실의 운수입니다. 불필요한 인간관계를 단호하게 가지치기하고, 감정적인 소모를 절제하며 나만의 독창적인 자산을 정밀하게 축적하는 시기로 삼는 것이 유리합니다.
+4. 2029년 (기유년 - 己酉年): 단단하게 잘 빚어진 보석(金)이 풍요로운 기틀 위에서 빛나는 풍요의 시기입니다. 금전적인 투자 성과나 안정적인 명예적 승진, 자격증 취득 등 노력해온 대가를 정당하고도 넉넉하게 보상받는 행운의 운수입니다.
+5. 2030년 (경술년 - 庚戌年): 거대한 바위와 대지가 마주하는 시기로서 다음 10년의 대운을 설계하는 전환점입니다. 주거지의 변동이나 새로운 조직으로의 이직 등 거시적 변화 속에서 마인드셋을 가다듬고 정착에 힘쓰면 번영의 기틀이 마련될 것입니다.
+
+개운을 위한 최고의 지침은 행운의 색상인 ${luckyColor}을 의상이나 일상 공간에 가까이하고, 뜻이 정체될 때는 ${luckyDirection}을 향해 5분 동안 깊은 심호흡과 명상을 행하는 것입니다. 우주 성단은 늘 당신의 번영과 영혼의 도약을 지지하고 있습니다.`;
+  }
+
+  if (serviceType === 'gunghap') {
+    const pName = partnerDetails?.name || "상대방";
+    const pGender = partnerDetails?.gender || "여성";
+    const pDayMaster = partnerDetails?.pillars?.dayPillar?.stem?.name || "상대방 일간";
+    
+    const pMok = partnerDetails?.elementsCount?.목 || 0;
+    const pHwa = partnerDetails?.elementsCount?.화 || 0;
+    const pTo = partnerDetails?.elementsCount?.토 || 0;
+    const pGeum = partnerDetails?.elementsCount?.금 || 0;
+    const pSu = partnerDetails?.elementsCount?.수 || 0;
+
+    return `🔗 [${name}] 님 & [${pName}] 님의 AI 프리미엄 인연·궁합 시너지 보고서
+
+동양 철학에서 두 영혼의 만남은 각자가 품고 태어난 고유한 우주적 원소 기운들이 마주하여 새로운 성단의 궤도를 형성하는 신비로운 사건입니다. [${name}] 님(일간: ${dayMaster})과 [${pName}] 님(성별: ${pGender}, 일간 기운: ${pDayMaster} 기운)의 사주팔자 만세력을 입체적으로 비교 스캔하여 두 분만의 상생 조화와 보완의 원리를 도출하였습니다.
+
+[1. 오행 에너지 보완성과 상생 주파수]
+- [${name}] 님의 오행 구성: 목(${elementMok}개), 화(${elementHwa}개), 토(${elementTo}개), 금(${elementGeum}개), 수(${elementSu}개)
+- [${pName}] 님의 오행 구성: 목(${pMok}개), 화(${pHwa}개), 토(${pTo}개), 금(${pGeum}개), 수(${pSu}개)
+
+두 사람의 차트를 분석한 결과, 서로의 결핍되거나 약한 오행 기운을 매우 유기적으로 보완해주는 '천생연분의 보완 기류'가 은은하게 작동하고 있습니다. 한 사람이 지나치게 뜨거운 불길을 품고 있다면 상대방의 맑고 서늘한 물길이 이를 침착하게 식혀주고, 한 사람이 단단하게 굳어 침묵할 때는 상대방의 따스하고 푸르른 목(木)의 성장의 에너지가 유연하게 움직임을 깨우는 훌륭한 오행 시너지를 지니고 있습니다.
+
+[2. 성향적 어울림 및 소통 방식 분석]
+${dayMaster}의 기질을 지닌 [${name}] 님은 매사에 독립적이면서도 깊은 직관과 추진력을 바탕으로 관계를 리드하며 신뢰를 주는 성향인 반면, ${pDayMaster}의 기운을 가진 [${pName}] 님은 매사 세심하고 사려 깊게 현실적 내실을 챙기는 장점이 돋보입니다. 이러한 기질적 결합은 연애 관계뿐만 아니라 장기적인 인생의 반려자나 비즈니스 협력 파트너로서 마주했을 때도 서로가 서로의 페이스메이커가 되어 주는 이상적인 결합입니다.
+
+[3. 잠재적 갈등 극복을 위한 영혼의 조율 비결]
+다만 두 분 모두 고유의 독립심과 단호한 고집(토/금의 충돌 기류)이 부딪히는 순간에는 대화가 다소 단절되거나 냉정하게 얼어붙을 위험이 있습니다. 갈등의 징조가 보일 때는 감정을 즉시 쏟아내기보다 30분 동안 각자의 생각할 시간을 존중해 준 후, 서로를 비판하기보다는 "나는 ~해서 조금 서운했어"라는 나 중심의 화법(I-Message)을 실천하는 것이 우주의 갈등 개운 비결입니다. 
+
+두 분의 행운을 돕기 위해 실내 인테리어에 화이트나 우드 톤의 소품을 함께 장식하거나 행운의 방향인 ${luckyDirection}으로 가벼운 여행을 다녀오시면 서로를 향한 신뢰와 애정이 성단처럼 환하고 단단하게 채워질 것입니다.`;
+  }
+
+  if (serviceType === 'career') {
+    return `💰 [${name}] 님의 AI 프리미엄 진로 방향성 및 재물 축적 Blueprint
+
+비즈니스와 자산 축적의 영역에서도 타고난 사주팔자 오행의 흐름을 읽는 것은 나침반을 쥐고 거친 바다를 항해하는 것과 같습니다. '${dayMaster}'의 고유한 천성을 품고 태어난 [${name}] 님의 오행 분포[목:${elementMok}, 화:${elementHwa}, 토:${elementTo}, 금:${elementGeum}, 수:${elementSu}]를 경영학적 관점과 정통 명리학의 원리로 분석하여 최적의 진로 방향성과 재물 증대 청사진을 설계해 드립니다.
+
+[1. 천직(天職)의 발견: 적격 산업군 및 직무 방향]
+[${name}] 님에게 가장 높은 성취감과 성공 주파수를 가져다줄 산업 영역은 다음과 같습니다.
+- 추천 직무/분야: 당신의 명식은 높은 계획성과 정교한 분별을 특징으로 합니다. 기획력과 창의성이 유기적으로 융합된 IT 벤처, 문화 콘텐츠 기획, 전문 컨설팅, 디자인 및 정교한 금융/자산 설계 분야에서 잠재력이 만개합니다.
+- 조직 활동 vs 창업가 성향: 당신은 스스로가 명확한 전문적인 도구를 손에 쥐었을 때 가장 빛나는 성향입니다. 든든한 조직 생활 속에서 실력을 축적하여 궁극적으로는 자신만의 독자적 브랜드나 1인 전문 기업을 설립하는 '독립적 스페셜리스트'로 진화할 때 인생의 명예와 금전이 폭발적으로 늘어나는 흐름을 지니고 있습니다.
+
+[2. 재물 축적의 Blueprint 및 자산 운용 개운법]
+- 재물운 활성화 코드: 사주 명리학적으로 [${name}] 님에게 큰돈(財)을 불러오는 비결은 충동적인 투기적 행동을 멀리하고, 정기적으로 마르지 않는 샘물처럼 안정적인 현금 흐름을 만들어내는 '시스템 자산 구축'에 있습니다.
+- 자산 운용 성향 및 조언: 주변 사람들의 추천이나 대세에 휩쓸려 무리하게 추진하는 변동성 높은 부동산/가상화폐 매매는 극심한 정신적 피로감을 유발하고 명식 내 수(水)와 금(金)의 균형을 해칠 수 있습니다. 오히려 나만의 확고한 가치 기준을 지키면서 우량 자산의 장기 분산 적립식 투자나 저작권, 지식 재산과 같은 무형의 권리 소득을 천천히 쌓아 올리는 것이 부의 고속도로에 진입하는 비결입니다.
+
+[3. 영혼의 금전 부스터 라이프 스타일]
+사업 파트너나 중요한 재물적 협상을 앞두고 있다면 행운의 아이템인 '${luckyItem}'을 몸에 지니거나 책상 위에 단정히 장식해 두는 것이 탁월한 영감을 불러일으킵니다. 또한 투자 및 비즈니스 결정은 가급적 기운이 맑고 상승하는 ${luckySeason}의 기세를 활용해 단호하게 결단하십시오. 우주의 풍요와 영광이 [${name}] 님의 단단한 행보 위로 가득 쏟아질 것입니다.`;
+  }
+
+  return "";
+};
+
 export default function App() {
   // Input form state
   const [name, setName] = useState('')
@@ -438,7 +526,7 @@ const generateSajuInsightWithGemini = async (sajuData) => {
           setPremiumResult(response.text());
         } else {
           // Fallback 궁합
-          setPremiumResult(`🔗 [${result.name}] 님 & [${partnerDetails.name}] 님의 AI 프리미엄 궁합 분석 결과\n\n두 사람의 오행 배치를 비교 분석한 결과, 서로의 결핍을 채워주는 보완성이 매우 훌륭한 배치를 나타내고 있습니다.\n\n[${result.name}] 님의 주된 에너지는 ${result.dayMasterDesc}이며, [${partnerDetails.name}] 님의 주된 에너지는 ${partnerDetails.pillars.dayPillar.stem.name} 기운입니다. 숲이 물길을 따라 확장되듯, 혹은 흙이 불길을 안아주듯 두 분의 기운은 상호 지지하며 새로운 영감을 일으키는 흐름을 형성하고 있습니다.\n\n다만, 대화 시 서로의 자존심이나 고유의 완고함이 부딪히는 순간(토/금의 충돌)이 올 수 있으므로, 갈등이 고조될 때는 침착하게 한 걸음 물러서서 상대방의 약한 오행 기운을 자극하지 않는 현명한 언어 소통이 최고의 개운법입니다. 서로의 행운의 컬러를 매칭한 데이트나 메탈 소품을 공유하시는 것이 큰 시너지를 발휘할 것입니다.`);
+          setPremiumResult(getPremiumFallbackReport('gunghap', result, partnerDetails));
         }
       } else if (selectedPremiumService === 'daewun') {
         if (apiKey) {
@@ -463,7 +551,7 @@ const generateSajuInsightWithGemini = async (sajuData) => {
           setPremiumResult(response.text());
         } else {
           // Fallback 대운
-          setPremiumResult(`💎 [${result.name}] 님의 AI 평생 대운 및 5개년 세운 정밀 분석 보고서\n\n인생은 10년을 주기로 강력하게 변화하는 '대운(大運)'의 바다를 순항하는 과정입니다. 당신의 일간 기운과 오행 분포 밸런스를 입체적으로 스캔한 결과, 당신은 청장년기에 인생 최대의 주체성 결단기를 마주하며 이를 발판 삼아 강력한 자아 완성을 이룩하게 되는 흐름을 타고 있습니다.\n\n[향후 5개년 세운 (2026-2030) 세부 로드맵]\n\n* 2026년 (병오년): 화(火)의 강력한 열정이 타오르는 시기로, 표현력이 극대화되어 사업적/학업적 결과물이 빛을 보고 주변 사람들에게 큰 주목을 받게 됩니다.\n* 2027년 (정미년): 토(土)와 화(火)의 기운이 결합하는 해로, 확장해온 일들을 안정적으로 수확하고 내실을 다지기에 적기입니다.\n* 2028년 (무신년): 금(金)의 매서운 분별력이 힘을 발휘하는 해로, 과감한 진로 결정이나 관계망의 정리 등 정돈에 유리합니다.\n* 2029년 (기유년): 날카롭고 아름다운 결실을 수확하는 해로, 금전적 유입과 명예의 성장이 동시에 일어날 수 있는 귀중한 운수입니다.\n* 2030년 (경술년): 대지의 포용력이 정점을 이루는 시기로, 새로운 보금자리를 마련하거나 인생의 다음 10년을 도모하는 안착기가 찾아올 것입니다.\n\n평안한 마음과 성실한 걸음을 지켜가신다면 대운의 물길이 당신을 가장 풍요로운 번영의 해안으로 이끌어 줄 것입니다.`);
+          setPremiumResult(getPremiumFallbackReport('daewun', result));
         }
       } else if (selectedPremiumService === 'career') {
         if (apiKey) {
@@ -488,16 +576,17 @@ const generateSajuInsightWithGemini = async (sajuData) => {
           setPremiumResult(response.text());
         } else {
           // Fallback 재물
-          setPremiumResult(`💰 [${result.name}] 님의 AI 진로 방향성 및 재물 축적 Blueprint\n\n당신의 오행 배치 및 일간의 강점은 탁월한 분별과 계획성, 그리고 끊임없이 기회를 선점하려는 강력한 의지에 기인합니다.\n\n[1. 진로 방향성 및 적격 산업군]\n- 당신에게 가장 추천하는 산업군은 지적 창의성과 기획력이 결합한 전문직 서비스나 정보 기술, 문화 컨텐츠 기획 분야입니다.\n- 조직 생활에 헌신하면서도 틈틈이 나만의 전문적인 도구를 세공하여 '나 자신'이 브랜드가 되는 독립적 프리랜서나 1인 창업가로서 활약할 때 본연의 사주팔자가 지닌 복록이 배가됩니다.\n\n[2. 재물 축적의 Blueprint]\n- 당신의 사주에서 돈(財)을 흐르게 만드는 핵심 주파수는 무모한 투기적 접근보다는, 지식 자산을 구축하여 지속적인 로열티나 고정 수익을 형성하는 '안정적 자산 흐름 설계'입니다.\n- 대세에 휩쓸려 충동적으로 진행하는 부동산이나 주식 매매는 수(水)/금(金)의 균형을 해쳐 피로감을 유발할 수 있으므로, 꾸준히 나만의 명확한 원칙을 지키며 저축과 우량주 장기 투자를 결합하는 형태가 최고의 부의 추월차선입니다. 행운의 아이템을 직장이나 침대 머리에 두는 것도 재물 개운에 좋습니다.`);
+          setPremiumResult(getPremiumFallbackReport('career', result));
         }
       }
       
       clearInterval(interval);
       setPremiumLoading(false);
     } catch (err) {
-      console.error("Gemini Premium Error:", err);
+      console.error("Gemini Premium Error, falling back to deterministic premium engine:", err);
       clearInterval(interval);
-      setPremiumResult("우주 정렬 신호의 정밀 연산이 잠시 지체되고 있습니다. 전통 계산 로직에 따르면 당신의 평생 진로와 재물의 복록은 우직하고 성실히 씨앗을 뿌릴 때 점진적으로 가득하게 채워지는 구조를 지니고 있습니다. 나침반의 방향을 믿고 한 걸음씩 나아가세요.");
+      const fallbackReport = getPremiumFallbackReport(selectedPremiumService, result, partnerDetails);
+      setPremiumResult(fallbackReport || "우주 정렬 신호의 정밀 연산이 잠시 지체되고 있습니다. 전통 계산 로직에 따르면 당신의 평생 진로와 재물의 복록은 우직하고 성실히 씨앗을 뿌릴 때 점진적으로 가득하게 채워지는 구조를 지니고 있습니다. 나침반의 방향을 믿고 한 걸음씩 나아가세요.");
       setPremiumLoading(false);
     }
   };
