@@ -389,8 +389,9 @@ const generateSajuInsightWithGemini = async (sajuData) => {
       setTodayFortuneLoading(true);
       setTodayFortuneLoadingText("🌌 오늘의 천체 배치와 당신의 일주 기운을 연동하는 중...");
       try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const prompt = `
+        const runApi = async () => {
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const prompt = `
 당신은 신비롭고 감각적인 테크-샤머니즘 사주 마스터입니다.
 다음 사용자의 사주 정보를 분석하여 '오늘 하루의 우주적 기운과 상세 총운'을 작성해 주세요.
 
@@ -404,10 +405,14 @@ const generateSajuInsightWithGemini = async (sajuData) => {
 1. 친절하고 신비로운 톤으로 작성해주세요.
 2. 오늘 하루 맞닥뜨릴 에너지 흐름, 대인관계 팁, 그리고 오늘 실천하면 좋은 행동을 아주 정성스럽게 작성해주세요.
 3. 최소 400자 이상으로 길고 구체적으로 적어주세요.
-        `;
-        const genResult = await timeoutPromise(6000, model.generateContent(prompt));
-        const response = await genResult.response;
-        setTodayFortuneResult(response.text());
+          `;
+          const genResult = await model.generateContent(prompt);
+          const response = await genResult.response;
+          return response.text();
+        };
+
+        const apiText = await timeoutPromise(6000, runApi());
+        setTodayFortuneResult(apiText);
         setTodayFortuneLoading(false);
       } catch (err) {
         console.error("Gemini Today Fortune error:", err);
@@ -540,9 +545,13 @@ const generateSajuInsightWithGemini = async (sajuData) => {
 2. 성격 및 연애 성향적 어울림, 협업이나 소통 시 발생할 수 있는 잠재적 갈등과 이를 극복할 수 있는 현명한 대화 및 조율 비결을 제시해주세요.
 3. 분량은 최소 800자 이상으로 매우 상세하고 감동적으로 작성해 주세요.
           `;
-          const genResult = await model.generateContent(prompt);
-          const response = await genResult.response;
-          setPremiumResult(response.text());
+          const runApi = async () => {
+            const genResult = await model.generateContent(prompt);
+            const response = await genResult.response;
+            return response.text();
+          };
+          const apiText = await timeoutPromise(6000, runApi());
+          setPremiumResult(apiText);
         } else {
           // Fallback 궁합
           setPremiumResult(getPremiumFallbackReport('gunghap', result, partnerDetails));
@@ -565,9 +574,13 @@ const generateSajuInsightWithGemini = async (sajuData) => {
 2. 향후 5개년(2026년~2030년) 동안의 구체적인 연도별 길흉화복과 라이프 디자인 가이드를 구체적으로 제안해주세요.
 3. 정중하고 존칭을 사용하며, 분량은 최소 800자 이상으로 매우 상세하게 작성해주세요.
           `;
-          const genResult = await model.generateContent(prompt);
-          const response = await genResult.response;
-          setPremiumResult(response.text());
+          const runApi = async () => {
+            const genResult = await model.generateContent(prompt);
+            const response = await genResult.response;
+            return response.text();
+          };
+          const apiText = await timeoutPromise(6000, runApi());
+          setPremiumResult(apiText);
         } else {
           // Fallback 대운
           setPremiumResult(getPremiumFallbackReport('daewun', result));
@@ -590,9 +603,13 @@ const generateSajuInsightWithGemini = async (sajuData) => {
 2. 재물운을 끌어당기는 구체적인 투자/자산 관리 성향 및 마인드셋 개운 비결을 기술해주세요.
 3. 분량은 최소 800자 이상으로 구체적인 실행 지침을 제안해주세요.
           `;
-          const genResult = await model.generateContent(prompt);
-          const response = await genResult.response;
-          setPremiumResult(response.text());
+          const runApi = async () => {
+            const genResult = await model.generateContent(prompt);
+            const response = await genResult.response;
+            return response.text();
+          };
+          const apiText = await timeoutPromise(6000, runApi());
+          setPremiumResult(apiText);
         } else {
           // Fallback 재물
           setPremiumResult(getPremiumFallbackReport('career', result));
