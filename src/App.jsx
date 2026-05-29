@@ -514,9 +514,11 @@ const generateSajuInsightWithGemini = async (sajuData) => {
       }
     }, 1200);
 
+    let partnerDetails = null;
+
     try {
       if (selectedPremiumService === 'gunghap') {
-        const partnerDetails = calculatePartnerSajuDetails();
+        partnerDetails = calculatePartnerSajuDetails();
         if (!partnerDetails) {
           clearInterval(interval);
           alert("상대방 성함과 생년월일을 올바르게 입력해주세요.");
@@ -616,14 +618,19 @@ const generateSajuInsightWithGemini = async (sajuData) => {
         }
       }
       
-      clearInterval(interval);
-      setPremiumLoading(false);
     } catch (err) {
       console.error("Gemini Premium Error, falling back to deterministic premium engine:", err);
+      try {
+        const fallbackReport = getPremiumFallbackReport(selectedPremiumService, result, partnerDetails);
+        setPremiumResult(fallbackReport || "우주 정렬 신호의 정밀 연산이 잠시 지체되고 있습니다. 전통 계산 로직에 따르면 당신의 평생 진로와 재물의 복록은 우직하고 성실히 씨앗을 뿌릴 때 점진적으로 가득하게 채워지는 구조를 지니고 있습니다. 나침반의 방향을 믿고 한 걸음씩 나아가세요.");
+      } catch (fallbackErr) {
+        console.error("Fallback generation also failed:", fallbackErr);
+        setPremiumResult("우주 정렬 신호의 정밀 연산이 잠시 지체되고 있습니다. 전통 계산 로직에 따르면 당신의 평생 진로와 재물의 복록은 우직하고 성실히 씨앗을 뿌릴 때 점진적으로 가득하게 채워지는 구조를 지니고 있습니다. 나침반의 방향을 믿고 한 걸음씩 나아가세요.");
+      }
+    } finally {
       clearInterval(interval);
-      const fallbackReport = getPremiumFallbackReport(selectedPremiumService, result, partnerDetails);
-      setPremiumResult(fallbackReport || "우주 정렬 신호의 정밀 연산이 잠시 지체되고 있습니다. 전통 계산 로직에 따르면 당신의 평생 진로와 재물의 복록은 우직하고 성실히 씨앗을 뿌릴 때 점진적으로 가득하게 채워지는 구조를 지니고 있습니다. 나침반의 방향을 믿고 한 걸음씩 나아가세요.");
       setPremiumLoading(false);
+      console.log("State Cleaned [premiumLoading = false, interval cleared] via finally block.");
     }
   };
 
