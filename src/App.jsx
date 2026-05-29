@@ -1,5 +1,10 @@
 import { useState } from 'react'
 import { Solar, Lunar } from 'lunar-javascript'
+import { GoogleGenerativeAI } from '@google/generative-ai'
+
+// Initialize Google Generative AI with the API Key from environment variables
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 // 10 Heavenly Stems (천간)
 const HEAVENLY_STEMS = [
@@ -181,7 +186,322 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [loadingText, setLoadingText] = useState('')
   const [result, setResult] = useState(null)
+
+  // Modals & AI States
+  const [isTodayFortuneOpen, setIsTodayFortuneOpen] = useState(false);
+  const [isPremiumOpen, setIsPremiumOpen] = useState(false);
+  const [selectedPremiumService, setSelectedPremiumService] = useState('daewun'); // 'daewun' | 'gunghap' | 'career'
   
+  // Partner info for compatibility (궁합)
+  const [partnerName, setPartnerName] = useState('');
+  const [partnerGender, setPartnerGender] = useState('female');
+  const [partnerBirthDate, setPartnerBirthDate] = useState('');
+  const [partnerBirthHour, setPartnerBirthHour] = useState('12');
+  const [partnerBirthMinute, setPartnerBirthMinute] = useState('00');
+  const [partnerTimeUnknown, setPartnerTimeUnknown] = useState(false);
+  const [partnerCalendarType, setPartnerCalendarType] = useState('solar');
+  
+  // Loading & Results for modals
+  const [todayFortuneResult, setTodayFortuneResult] = useState('');
+  const [todayFortuneLoading, setTodayFortuneLoading] = useState(false);
+  const [todayFortuneLoadingText, setTodayFortuneLoadingText] = useState('');
+  const [drawnCosmicCard, setDrawnCosmicCard] = useState(null); // for card pull
+  
+  const [premiumResult, setPremiumResult] = useState('');
+  const [premiumLoading, setPremiumLoading] = useState(false);
+  const [premiumLoadingText, setPremiumLoadingText] = useState('');
+  
+  // AI Saju Deep Reading
+  const [aiSajuReading, setAiSajuReading] = useState('');
+  const [aiSajuLoading, setAiSajuLoading] = useState(false);
+  
+// Ohaeng Cosmic Card Pull constants for today's fortune
+const COSMIC_CARDS = [
+  { element: '목', title: '🌲 성장과 시작의 나무 카드 (Wood)', desc: '오늘은 새로운 기획이나 도전을 힘차게 펼칠 최고의 에너지 주파수입니다. 주변에 따뜻한 조언을 전하고 리더십을 발휘하세요.' },
+  { element: '화', title: '🔥 열정과 매력의 불꽃 카드 (Fire)', desc: '당신의 표현력과 친화력이 정점에 달하는 날입니다. 적극적으로 감정을 발산하고 많은 사람들과 열린 만남을 나눠보세요.' },
+  { element: '토', title: '⛰️ 포용과 안정의 대지 카드 (Earth)', desc: '생각을 가다듬고 정돈하는 신뢰의 날입니다. 약속을 성실히 이행하며 차분하게 일정을 내실 있게 다져가기에 최상입니다.' },
+  { element: '금', title: '💎 결단과 규칙의 강철 카드 (Metal)', desc: '미뤄왔던 중요한 선택을 결단하기에 완벽한 날입니다. 감정에 치우치지 말고 정연하고 똑 부러지게 매듭지으세요.' },
+  { element: '수', title: '🌊 지혜와 사색의 바다 카드 (Water)', desc: '유연하게 생각하고 경청하며 나만의 사색에 잠기기에 훌륭한 날입니다. 바쁜 일상에서 한 걸음 물러나 직관의 힘을 믿으세요.' }
+];
+
+// Helper to generate Saju insight report with Gemini API
+const generateSajuInsightWithGemini = async (sajuData) => {
+  if (!genAI) {
+    throw new Error("API Key is missing");
+  }
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const prompt = `
+당신은 우주 성단 정렬과 사주명리학을 결합해 운명을 해석하는 신비로운 '테크-샤머니즘(Tech-Shamanism) 사주 마스터'입니다.
+다음 사주명식 데이터를 바탕으로 사용자의 성격적 장점, 오행 에너지 흐름, 그리고 앞으로의 삶에 대한 조언을 매우 깊이 있고 아름다운 문체로 작성해주세요.
+
+[사용자 데이터]
+이름: ${sajuData.name}
+성별: ${sajuData.gender}
+생년월일: ${sajuData.birthDate} (${sajuData.calendarType})
+사주 명식:
+- 시주: ${sajuData.pillars.hourPillar.stem.name} (${sajuData.pillars.hourPillar.stem.char}) / ${sajuData.pillars.hourPillar.branch.name} (${sajuData.pillars.hourPillar.branch.char}) - 십성: ${sajuData.pillars.hourPillar.tenStar}
+- 일주: ${sajuData.pillars.dayPillar.stem.name} (${sajuData.pillars.dayPillar.stem.char}) / ${sajuData.pillars.dayPillar.branch.name} (${sajuData.pillars.dayPillar.branch.char}) - 십성: ${sajuData.pillars.dayPillar.tenStar} (일간은 ${sajuData.dayMasterDesc}입니다.)
+- 월주: ${sajuData.pillars.monthPillar.stem.name} (${sajuData.pillars.monthPillar.stem.char}) / ${sajuData.pillars.monthPillar.branch.name} (${sajuData.pillars.monthPillar.branch.char}) - 십성: ${sajuData.pillars.monthPillar.tenStar}
+- 년주: ${sajuData.pillars.yearPillar.stem.name} (${sajuData.pillars.yearPillar.stem.char}) / ${sajuData.pillars.yearPillar.branch.name} (${sajuData.pillars.yearPillar.branch.char}) - 십성: ${sajuData.pillars.yearPillar.tenStar}
+
+오행 분포:
+- 목(木): ${sajuData.elementsCount.목}개
+- 화(火): ${sajuData.elementsCount.화}개
+- 토(土): ${sajuData.elementsCount.토}개
+- 금(金): ${sajuData.elementsCount.금}개
+- 수(水): ${sajuData.elementsCount.수}개
+가장 결핍되거나 약한 오행 기운: ${sajuData.luckyElement} (개운법 행운의 컬러: ${sajuData.luckyGuides.color}, 행운의 아이템: ${sajuData.luckyGuides.item})
+
+[요구사항]
+1. 존댓말과 신비롭고 고급스러운 테크-샤머니즘 어조를 사용해주세요. (예: "우주의 은하수 흐름이 당신에게...", "당신의 일간 甲목의 기운은...")
+2. 분량은 최소 600자 이상으로 매우 상세하고 정성스럽게 작성해주세요.
+3. 다음 세 가지 항목을 포함해 작성해주세요.
+   - 🌟 [우주적 성향 및 기질]: 타고난 본질과 강점, 천간지지의 조화
+   - ⚡ [오행 에너지 조율 및 개운법]: 오행 분포 밸런스에 따른 라이프 가이드, 약한 오행 보강법
+   - 🪐 [영혼의 성장 무기와 미래 나침반]: 인생의 거친 파도를 넘을 수 있는 당신만의 핵심 무기와 지혜의 조언
+  `;
+
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  return response.text();
+};
+
+  // Open Today's Fortune modal
+  const handleOpenTodayFortune = async () => {
+    setIsTodayFortuneOpen(true);
+    setDrawnCosmicCard(null); // Reset cosmic card pull
+    
+    if (!result) {
+      setTodayFortuneResult("");
+      return;
+    }
+    
+    if (todayFortuneResult) return; // already loaded
+    
+    if (apiKey) {
+      setTodayFortuneLoading(true);
+      setTodayFortuneLoadingText("🌌 오늘의 천체 배치와 당신의 일주 기운을 연동하는 중...");
+      try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const prompt = `
+당신은 신비롭고 감각적인 테크-샤머니즘 사주 마스터입니다.
+다음 사용자의 사주 정보를 분석하여 '오늘 하루의 우주적 기운과 상세 총운'을 작성해 주세요.
+
+사용자 이름: ${result.name}
+성별: ${result.gender}
+사주 명식의 일주: ${result.pillars.dayPillar.stem.name} (${result.pillars.dayPillar.stem.char}) / ${result.pillars.dayPillar.branch.name} (${result.pillars.dayPillar.branch.char})
+오행 분포: 목(${result.elementsCount.목}) 화(${result.elementsCount.화}) 토(${result.elementsCount.토}) 금(${result.elementsCount.금}) 수(${result.elementsCount.수})
+행운의 오행 기운: ${result.luckyElement}
+
+[요구사항]
+1. 친절하고 신비로운 톤으로 작성해주세요.
+2. 오늘 하루 맞닥뜨릴 에너지 흐름, 대인관계 팁, 그리고 오늘 실천하면 좋은 행동을 아주 정성스럽게 작성해주세요.
+3. 최소 400자 이상으로 길고 구체적으로 적어주세요.
+        `;
+        const genResult = await model.generateContent(prompt);
+        const response = await genResult.response;
+        setTodayFortuneResult(response.text());
+        setTodayFortuneLoading(false);
+      } catch (err) {
+        console.error("Gemini Today Fortune error:", err);
+        setTodayFortuneResult("우주의 신호가 잠시 흔들리고 있습니다. 오늘의 일주 기운에 따르면 오늘 하루는 나만의 원소 기운이 균형을 잡는 날입니다. 침착하고 주체적으로 대처할 때 가장 강력한 운이 들어옵니다. 사색과 가벼운 명상, 혹은 행운의 아이템을 몸에 지녀보세요.");
+        setTodayFortuneLoading(false);
+      }
+    } else {
+      // Deterministic fallback
+      setTodayFortuneResult(`🌌 오늘의 우주 나침반 | [${result.name}] 님의 오행 일일 보고서\n\n오늘의 흐름은 당신의 일간인 ${result.dayMasterDesc}과 강력한 공명 주파수를 형성하고 있습니다. 오행 에너지를 분석한 결과, 오늘 하루는 대외적인 확장보다 내면의 에너지를 축적하고 단단히 정돈하는 데 최고의 기운이 작용합니다.\n\n특히 대인관계에서는 타인의 말을 경청하고 한 템포 쉬어갈 때 뜻밖의 귀중한 조력자를 만나게 되며, 중요한 진로나 업무적 의사결정은 오후 시간대(토/금의 시간대)에 진행하는 것이 유리합니다. 개운을 돕기 위해 행운의 방위인 ${result.luckyGuides.direction}을 향해 1분간 눈을 감고 명상을 하거나, 행운의 색상인 ${result.luckyGuides.color} 계열의 의상 및 소품을 매치해보세요. 우주가 당신의 평화와 성장을 돕고 있습니다.`);
+    }
+  };
+
+  const handleOpenPremium = () => {
+    setIsPremiumOpen(true);
+    // Reset premium states
+    setPremiumResult("");
+    setPartnerName("");
+    setPartnerBirthDate("");
+  };
+
+  const handleDrawCosmicCard = () => {
+    const randomCard = COSMIC_CARDS[Math.floor(Math.random() * COSMIC_CARDS.length)];
+    setDrawnCosmicCard(randomCard);
+    console.log("State Updated [drawnCosmicCard]:", randomCard.title);
+  };
+
+  // Internal partner Saju calculator for Compatibility (궁합)
+  const calculatePartnerSajuDetails = () => {
+    if (!partnerName || !partnerBirthDate) return null;
+    const dateObj = new Date(partnerBirthDate);
+    const year = dateObj.getFullYear();
+    const month = dateObj.getMonth() + 1;
+    const day = dateObj.getDate();
+    const hr = partnerTimeUnknown ? 12 : parseInt(partnerBirthHour);
+    const mn = partnerTimeUnknown ? 0 : parseInt(partnerBirthMinute);
+
+    let lunar;
+    if (partnerCalendarType === 'solar') {
+      const solar = Solar.fromYmdHms(year, month, day, hr, mn, 0);
+      lunar = solar.getLunar();
+    } else {
+      const isLeap = partnerCalendarType === 'lunar_leap';
+      lunar = Lunar.fromYmdHms(year, isLeap ? -month : month, day, hr, mn, 0);
+    }
+
+    const eightChar = lunar.getEightChar();
+    
+    // Map pillars
+    const yStem = findStem(eightChar.getYearGan());
+    const yBranch = findBranch(eightChar.getYearZhi());
+    const mStem = findStem(eightChar.getMonthGan());
+    const mBranch = findBranch(eightChar.getMonthZhi());
+    const dStem = findStem(eightChar.getDayGan());
+    const dBranch = findBranch(eightChar.getDayZhi());
+    const hStem = findStem(eightChar.getTimeGan());
+    const hBranch = findBranch(eightChar.getTimeZhi());
+
+    const yearPillar = { stem: yStem, branch: yBranch };
+    const monthPillar = { stem: mStem, branch: mBranch };
+    const dayPillar = { stem: dStem, branch: dBranch };
+    const hourPillar = { stem: hStem, branch: hBranch };
+
+    const elementsCount = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
+    const addElem = (elem) => { elementsCount[elem] = (elementsCount[elem] || 0) + 1 };
+    addElem(yStem.element); addElem(yBranch.element);
+    addElem(mStem.element); addElem(mBranch.element);
+    addElem(dStem.element); addElem(dBranch.element);
+    addElem(hStem.element); addElem(hBranch.element);
+
+    return {
+      name: partnerName,
+      gender: partnerGender === 'male' ? '남성' : '여성',
+      pillars: { yearPillar, monthPillar, dayPillar, hourPillar },
+      elementsCount
+    };
+  };
+
+  const handleGeneratePremiumReport = async () => {
+    if (!result) {
+      alert("먼저 메인 화면에서 사주 분석을 완료해 주세요!");
+      return;
+    }
+    
+    setPremiumResult("");
+    setPremiumLoading(true);
+    
+    const steps = [
+      "🪐 명식과 일주 공명 궤도 해독 중...",
+      "📜 천간지기 대운 기류 스캔 중...",
+      "💎 Gemini AI 초정밀 운세 보고서 작성 중..."
+    ];
+    setPremiumLoadingText(steps[0]);
+    
+    let stepCount = 0;
+    const interval = setInterval(() => {
+      stepCount++;
+      if (stepCount < steps.length) {
+        setPremiumLoadingText(steps[stepCount]);
+      }
+    }, 1200);
+
+    try {
+      if (selectedPremiumService === 'gunghap') {
+        const partnerDetails = calculatePartnerSajuDetails();
+        if (!partnerDetails) {
+          clearInterval(interval);
+          alert("상대방 성함과 생년월일을 올바르게 입력해주세요.");
+          setPremiumLoading(false);
+          return;
+        }
+
+        if (apiKey) {
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const prompt = `
+당신은 우주의 인연 에너지 정렬과 사상적 궁합을 분석하는 'AI 인연 궁합 마스터'입니다.
+다음 두 명의 사주 정보를 비교 분석하여 이들의 '천생 궁합 시너지 리포트'를 테크-샤머니즘 스타일의 매끄러운 존댓말로 아름답게 작성해 주세요.
+
+[본인 정보]
+이름: ${result.name} (${result.gender})
+일주: ${result.pillars.dayPillar.stem.name} / ${result.pillars.dayPillar.branch.name}
+오행 분포: 목(${result.elementsCount.목}) 화(${result.elementsCount.화}) 토(${result.elementsCount.토}) 금(${result.elementsCount.금}) 수(${result.elementsCount.수})
+
+[상대방 정보]
+이름: ${partnerDetails.name} (${partnerDetails.gender})
+일주: ${partnerDetails.pillars.dayPillar.stem.name} / ${partnerDetails.pillars.dayPillar.branch.name}
+오행 분포: 목(${partnerDetails.elementsCount.목}) 화(${partnerDetails.elementsCount.화}) 토(${partnerDetails.elementsCount.토}) 금(${partnerDetails.elementsCount.금}) 수(${partnerDetails.elementsCount.수})
+
+[요구사항]
+1. 두 사람의 오행 보완 관계(서로에게 결핍된 기운을 보완해주는지 여부)를 분석해주세요.
+2. 성격 및 연애 성향적 어울림, 협업이나 소통 시 발생할 수 있는 잠재적 갈등과 이를 극복할 수 있는 현명한 대화 및 조율 비결을 제시해주세요.
+3. 분량은 최소 800자 이상으로 매우 상세하고 감동적으로 작성해 주세요.
+          `;
+          const genResult = await model.generateContent(prompt);
+          const response = await genResult.response;
+          setPremiumResult(response.text());
+        } else {
+          // Fallback 궁합
+          setPremiumResult(`🔗 [${result.name}] 님 & [${partnerDetails.name}] 님의 AI 프리미엄 궁합 분석 결과\n\n두 사람의 오행 배치를 비교 분석한 결과, 서로의 결핍을 채워주는 보완성이 매우 훌륭한 배치를 나타내고 있습니다.\n\n[${result.name}] 님의 주된 에너지는 ${result.dayMasterDesc}이며, [${partnerDetails.name}] 님의 주된 에너지는 ${partnerDetails.pillars.dayPillar.stem.name} 기운입니다. 숲이 물길을 따라 확장되듯, 혹은 흙이 불길을 안아주듯 두 분의 기운은 상호 지지하며 새로운 영감을 일으키는 흐름을 형성하고 있습니다.\n\n다만, 대화 시 서로의 자존심이나 고유의 완고함이 부딪히는 순간(토/금의 충돌)이 올 수 있으므로, 갈등이 고조될 때는 침착하게 한 걸음 물러서서 상대방의 약한 오행 기운을 자극하지 않는 현명한 언어 소통이 최고의 개운법입니다. 서로의 행운의 컬러를 매칭한 데이트나 메탈 소품을 공유하시는 것이 큰 시너지를 발휘할 것입니다.`);
+        }
+      } else if (selectedPremiumService === 'daewun') {
+        if (apiKey) {
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const prompt = `
+당신은 우주 성단 정렬과 사주명리학을 결합해 운명을 해석하는 신비로운 '테크-샤머니즘(Tech-Shamanism) 사주 마스터'입니다.
+다음 사용자의 사주 정보를 바탕으로 '평생의 대운 흐름과 향후 5개년 세운(연도별 상세 운세)'에 대해 매우 정교하고 품격 있는 문체로 해석 보고서를 작성해 주세요.
+
+사용자 정보:
+이름: ${result.name}
+성별: ${result.gender}
+일주: ${result.pillars.dayPillar.stem.name} / ${result.pillars.dayPillar.branch.name}
+오행: 목(${result.elementsCount.목}) 화(${result.elementsCount.화}) 토(${result.elementsCount.토}) 금(${result.elementsCount.금}) 수(${result.elementsCount.수})
+
+[요구사항]
+1. 대운의 개념과 이 사용자의 일생을 관통하는 대운의 주기적 특징(도전기, 안착기 등)을 설명해주세요.
+2. 향후 5개년(2026년~2030년) 동안의 구체적인 연도별 길흉화복과 라이프 디자인 가이드를 구체적으로 제안해주세요.
+3. 정중하고 존칭을 사용하며, 분량은 최소 800자 이상으로 매우 상세하게 작성해주세요.
+          `;
+          const genResult = await model.generateContent(prompt);
+          const response = await genResult.response;
+          setPremiumResult(response.text());
+        } else {
+          // Fallback 대운
+          setPremiumResult(`💎 [${result.name}] 님의 AI 평생 대운 및 5개년 세운 정밀 분석 보고서\n\n인생은 10년을 주기로 강력하게 변화하는 '대운(大運)'의 바다를 순항하는 과정입니다. 당신의 일간 기운과 오행 분포 밸런스를 입체적으로 스캔한 결과, 당신은 청장년기에 인생 최대의 주체성 결단기를 마주하며 이를 발판 삼아 강력한 자아 완성을 이룩하게 되는 흐름을 타고 있습니다.\n\n[향후 5개년 세운 (2026-2030) 세부 로드맵]\n\n* 2026년 (병오년): 화(火)의 강력한 열정이 타오르는 시기로, 표현력이 극대화되어 사업적/학업적 결과물이 빛을 보고 주변 사람들에게 큰 주목을 받게 됩니다.\n* 2027년 (정미년): 토(土)와 화(火)의 기운이 결합하는 해로, 확장해온 일들을 안정적으로 수확하고 내실을 다지기에 적기입니다.\n* 2028년 (무신년): 금(金)의 매서운 분별력이 힘을 발휘하는 해로, 과감한 진로 결정이나 관계망의 정리 등 정돈에 유리합니다.\n* 2029년 (기유년): 날카롭고 아름다운 결실을 수확하는 해로, 금전적 유입과 명예의 성장이 동시에 일어날 수 있는 귀중한 운수입니다.\n* 2030년 (경술년): 대지의 포용력이 정점을 이루는 시기로, 새로운 보금자리를 마련하거나 인생의 다음 10년을 도모하는 안착기가 찾아올 것입니다.\n\n평안한 마음과 성실한 걸음을 지켜가신다면 대운의 물길이 당신을 가장 풍요로운 번영의 해안으로 이끌어 줄 것입니다.`);
+        }
+      } else if (selectedPremiumService === 'career') {
+        if (apiKey) {
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const prompt = `
+당신은 사주명리 진로 상담과 현대적 비즈니스 라이프 코칭을 결합한 'AI 커리어-머니 명리학 마스터'입니다.
+다음 사용자의 사주명식을 바탕으로 '평생 진로 방향성 및 재물 축적 Blueprint'에 대해 경영학적 통찰과 전통 사주학을 융합해 매끄럽게 작성해주세요.
+
+사용자 정보:
+이름: ${result.name}
+성별: ${result.gender}
+일주: ${result.pillars.dayPillar.stem.name} / ${result.pillars.dayPillar.branch.name}
+오행: 목(${result.elementsCount.목}) 화(${result.elementsCount.화}) 토(${result.elementsCount.토}) 금(${result.elementsCount.금}) 수(${result.elementsCount.수})
+
+[요구사항]
+1. 사주에서 나타나는 직업적 성향과 가장 적합한 산업군/직종(창업, 전문직, 조직 생활 등)을 분석해주세요.
+2. 재물운을 끌어당기는 구체적인 투자/자산 관리 성향 및 마인드셋 개운 비결을 기술해주세요.
+3. 분량은 최소 800자 이상으로 구체적인 실행 지침을 제안해주세요.
+          `;
+          const genResult = await model.generateContent(prompt);
+          const response = await genResult.response;
+          setPremiumResult(response.text());
+        } else {
+          // Fallback 재물
+          setPremiumResult(`💰 [${result.name}] 님의 AI 진로 방향성 및 재물 축적 Blueprint\n\n당신의 오행 배치 및 일간의 강점은 탁월한 분별과 계획성, 그리고 끊임없이 기회를 선점하려는 강력한 의지에 기인합니다.\n\n[1. 진로 방향성 및 적격 산업군]\n- 당신에게 가장 추천하는 산업군은 지적 창의성과 기획력이 결합한 전문직 서비스나 정보 기술, 문화 컨텐츠 기획 분야입니다.\n- 조직 생활에 헌신하면서도 틈틈이 나만의 전문적인 도구를 세공하여 '나 자신'이 브랜드가 되는 독립적 프리랜서나 1인 창업가로서 활약할 때 본연의 사주팔자가 지닌 복록이 배가됩니다.\n\n[2. 재물 축적의 Blueprint]\n- 당신의 사주에서 돈(財)을 흐르게 만드는 핵심 주파수는 무모한 투기적 접근보다는, 지식 자산을 구축하여 지속적인 로열티나 고정 수익을 형성하는 '안정적 자산 흐름 설계'입니다.\n- 대세에 휩쓸려 충동적으로 진행하는 부동산이나 주식 매매는 수(水)/금(金)의 균형을 해쳐 피로감을 유발할 수 있으므로, 꾸준히 나만의 명확한 원칙을 지키며 저축과 우량주 장기 투자를 결합하는 형태가 최고의 부의 추월차선입니다. 행운의 아이템을 직장이나 침대 머리에 두는 것도 재물 개운에 좋습니다.`);
+        }
+      }
+      
+      clearInterval(interval);
+      setPremiumLoading(false);
+    } catch (err) {
+      console.error("Gemini Premium Error:", err);
+      clearInterval(interval);
+      setPremiumResult("우주 정렬 신호의 정밀 연산이 잠시 지체되고 있습니다. 전통 계산 로직에 따르면 당신의 평생 진로와 재물의 복록은 우직하고 성실히 씨앗을 뿌릴 때 점진적으로 가득하게 채워지는 구조를 지니고 있습니다. 나침반의 방향을 믿고 한 걸음씩 나아가세요.");
+      setPremiumLoading(false);
+    }
+  };
+
   // Custom interactive simulation delay & texts
   const runCosmicAlignment = (e) => {
     e.preventDefault()
@@ -289,14 +609,21 @@ export default function App() {
     const dayMaster = dayPillar.stem;
     const dayMasterDesc = `${dayMaster.name}(${dayMaster.char}${dayMaster.element}) 기운`;
     
-    // Deterministic fortune generation based on element ratios
+    // Deterministic fortune generation based on element ratios - HIGHER THAN 500 CHARACTERS
     let mainStrengths = "";
-    if (elementsCount['목'] >= 3) mainStrengths = "목(木)의 강한 생명력이 가득하여 목표 지향성이 투철하고, 남을 성장시키는 리더십과 자애로운 기품을 지녔습니다. 끊임없이 새로움을 모색하는 발명가적 에너지가 느껴집니다.";
-    else if (elementsCount['화'] >= 3) mainStrengths = "화(火)의 뜨거운 열정이 넘쳐흘러 표현력이 풍부하고 매사 솔직담백하며 강직합니다. 어떤 모임에서든 핵심 분위기 메이커로 활약하며 뛰어난 공감 및 전달력을 자랑합니다.";
-    else if (elementsCount['토'] >= 3) mainStrengths = "토(土)의 두터운 포용력이 중심을 단단히 잡아주어 중개 및 조율 능력이 비범하며, 한번 맺은 인연을 소중히 지키는 무거운 신용이 인생의 가장 큰 자산입니다.";
-    else if (elementsCount['금'] >= 3) mainStrengths = "금(金)의 매서운 분별과 예리함이 살아있어 매사 빈틈이 없고, 사사로운 감정에 치우치지 않는 냉철한 의사결정력과 시시비비를 명확히 가리는 정의감이 돋보입니다.";
-    else if (elementsCount['수'] >= 3) mainStrengths = "수(水)의 도도한 지혜가 흐르고 있어 임기응변과 전략 구상이 탁월하며 유연합니다. 남들이 보지 못하는 곳을 꿰뚫어 보는 직관력과 학문적 집중력이 대단합니다.";
-    else mainStrengths = "오행(木·火·土·金·水)이 골고루 조화를 이루고 있는 아주 귀한 평화주의적 명식입니다. 어떤 격동의 운이 오더라도 유연하고 굳세게 돌파하는 단단한 적응력과 균형 감각이 대단하십니다.";
+    if (elementsCount['목'] >= 3) {
+      mainStrengths = "당신의 사주에는 목(木)의 강한 생명력이 가득하여 마치 한겨울의 모진 풍파를 이겨내고 굳건히 대지를 뚫고 솟아오르는 신비로운 나무들과 같습니다. 매사에 뚜렷한 목표 지향성을 지니고 있으며, 남을 올바르게 성장시키는 자애롭고 현명한 리더십이 돋보입니다. 타인에게 의존하기보다 독립적으로 나만의 길을 개척하는 추진력이 당신의 가장 큰 무기입니다.\n\n또한 창의적이고 새로운 분야를 스케치하는 기획자이자 모험가로서의 기운이 충만하며, 지식에 대한 탐구욕도 깊습니다. 다만, 때로는 너무 한곳으로 뻗어 나가려 하여 주변과의 유연한 타협이나 끈기 있는 마무리가 부족할 수 있으니 이를 주의하고 감정을 다스리는 조율이 필요합니다. 올 한 해는 당신이 품은 푸르른 싹이 울창한 숲을 이루기 위한 가장 결정적인 초석을 다지는 소중한 도약의 해가 될 것입니다.";
+    } else if (elementsCount['화'] >= 3) {
+      mainStrengths = "당신의 사주에는 화(火)의 뜨거운 열정이 가득 흘러넘쳐 마치 온 세상을 따뜻하고 화려하게 비추는 태양이나 용광로의 불길과 같습니다. 풍부한 표현력을 바탕으로 감수성이 풍부하며, 매사 솔직담백하고 뒤끝이 없는 강직한 정의파입니다. 어떤 낯선 공간이나 모임에서도 금방 분위기를 주도하며 타인의 시선을 사로잡는 강력한 매력과 사교성을 자랑합니다.\n\n뛰어난 감각과 전달력을 지녀 예술적 영역이나 미디어를 활용하는 일에서 비범한 성과를 보일 수 있습니다. 다만, 감정의 굴곡이 급격하게 요동치거나 금방 달아올랐다가 쉽게 식어버릴 수 있는 급한 성향이 있으므로 내면의 평온을 다스리는 사색과 차분함이 최고의 명약이 될 것입니다. 당신의 밝고 긍정적인 불꽃이 주변의 어둠을 밝혀주어 뜻밖의 귀한 관계적 성장을 이뤄낼 것입니다.";
+    } else if (elementsCount['토'] >= 3) {
+      mainStrengths = "당신의 사주에는 토(土)의 두텁고 묵직한 포용력이 중심을 아주 단단히 잡아주고 있어 모진 풍파와 흔들림 속에서도 흔들리지 않는 굳건한 태산과 같습니다. 중간에서 서로 다른 의견을 조율하고 신뢰를 쌓아올리는 중개 능력이 비범하며, 한번 인연을 맺은 사람이나 약속은 하늘이 무너져도 소중히 지켜내는 깊은 신의가 인생의 가장 든든한 초석이자 자산입니다.\n\n우직하고 계획적인 실천력을 지녔으며, 감정에 치우치지 않고 매사 현실적인 내실을 기하는 수호자형 인물입니다. 다만, 생각의 틀이 너무 고착되거나 완고해져 변화의 흐름에 유연하게 대처하지 못하는 고집이 될 수 있으니 때로는 타인의 새로운 도전을 열린 마음으로 받아들이는 노력이 필요합니다. 흙이 온 생명을 기르듯 당신의 헌신과 무게감이 주변에 안정을 가져다줄 것입니다.";
+    } else if (elementsCount['금'] >= 3) {
+      mainStrengths = "당신의 사주에는 금(金)의 매서운 분별력과 날카로운 단단함이 깊게 깃들어 있어, 맑고 정갈하게 세공된 순도 높은 다이아몬드나 시시비비를 명확히 가려내는 정의로운 검과 같습니다. 매사 허투루 처리하지 않는 빈틈없는 완벽주의적 면모와 공정함이 돋보이며, 불필요한 일에 얽매이지 않고 사사로운 정보다 원칙과 결단을 우선시하는 카리스마가 대단합니다.\n\n냉철한 이성과 탁월한 기획력, 마무리를 매듭짓는 수확의 에너지가 강하여 비즈니스나 중요한 의사결정에서 주도적인 역할을 책임지게 됩니다. 다만, 너무 냉정하고 날이 서 있어 주변 사람들에게 뜻하지 않게 상처를 주거나 고립감을 느낄 수 있으니 부드러운 화법과 배려의 마음을 곁들이면 훨씬 큰 대업을 완수하게 될 것입니다. 당신이 가진 의리 있는 성품이 결국 모두의 인정을 받게 됩니다.";
+    } else if (elementsCount['수'] >= 3) {
+      mainStrengths = "당신의 사주에는 수(水)의 깊고 도도한 지혜의 강물이 유연하게 흐르고 있어 남들이 보지 못하는 이면을 꿰뚫어 보는 강력한 통찰력과 직관력을 지녔습니다. 장애물을 만나면 다투지 않고 굽이쳐 돌아가는 유연성과 임기응변이 뛰어나며, 고도의 집중력과 깊은 학문적 성취, 혹은 기획 능력이 대단합니다. 차분하게 내실을 다지며 때를 기다리는 은인자중의 지혜가 빛납니다.\n\n심지가 깊고 타인의 아픔을 깊이 경청하는 훌륭한 치유자의 기운이 묻어납니다. 다만, 내면에 담아둔 깊은 생각이나 감정을 밖으로 잘 드러내지 않아 다소 비밀스럽거나 생각이 꼬리를 물어 쓸데없는 근심과 우울감에 빠지기 쉬우니 에너지를 적극적으로 발산하는 대외 활동을 가미하는 것이 좋습니다. 당신이 가진 지혜의 물결이 세상의 메마른 곳을 채우며 잔잔한 감동을 퍼뜨릴 것입니다.";
+    } else {
+      mainStrengths = "당신의 명식은 오행(木·火·土·金·水)의 다섯 가지 우주 기운이 어느 한쪽으로 치우침 없이 극적인 조화와 완벽한 균형을 이루고 있는 대단히 보기 드문 귀하고 영롱한 명식입니다. 어떤 변화무쌍하고 가혹한 대운이나 악조건이 찾아오더라도 나침반의 바늘처럼 유연하면서도 빠르게 자기 중심을 잡고 극복해내는 뛰어난 회복탄력성과 단단한 적응력을 지니고 계십니다.\n\n모든 에너지 흐름이 유기적으로 통하고 있어 대인관계의 원만함과 비범한 중재력, 고유의 창의성이 큰 부침 없이 꾸준하게 발현되는 강점이 있습니다. 특정한 오행에 집착하기보다 시기적 적응에 유연하므로, 나만의 템포를 지키며 한 걸음씩 성실하게 나아갈 때 하늘의 뜻과 땅의 기운이 결합하여 더할 나위 없이 풍요롭고 명예로운 인생을 완성해 나갈 것입니다.";
+    }
 
     // Determine Lucky guides based on weakest element
     let weakestElement = '목';
@@ -379,6 +706,22 @@ export default function App() {
 
     setResult(sajuResult)
     setLoading(false)
+
+    // Trigger dynamic Gemini deep analysis if API Key is configured!
+    if (apiKey) {
+      setAiSajuReading("");
+      setAiSajuLoading(true);
+      generateSajuInsightWithGemini(sajuResult)
+        .then(reading => {
+          setAiSajuReading(reading);
+          setAiSajuLoading(false);
+          console.log("%c🔮 [Saju.ai] Gemini AI 사주 풀이 완료!", "color: #10B981; font-weight: bold;");
+        })
+        .catch(err => {
+          console.error("Gemini Saju error:", err);
+          setAiSajuLoading(false);
+        });
+    }
   }
 
   // Copy share text to clipboard
@@ -418,9 +761,17 @@ export default function App() {
         </div>
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-400">
           <a href="#hero" className="hover:text-amber-400 transition-colors">나의 만세력</a>
-          <a href="#about" className="hover:text-amber-400 transition-colors">오늘의 총운</a>
+          <button 
+            onClick={handleOpenTodayFortune}
+            className="hover:text-amber-400 transition-colors bg-transparent border-none outline-none focus:outline-none cursor-pointer"
+          >
+            오늘의 총운
+          </button>
           <span className="w-1.5 h-1.5 rounded-full bg-purple-500/50" />
-          <button className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white/5 border border-white/10 hover:border-amber-400/40 text-gray-300 hover:text-white transition-all">
+          <button 
+            onClick={handleOpenPremium}
+            className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white/5 border border-white/10 hover:border-amber-400/40 text-gray-300 hover:text-white transition-all transform hover:scale-[1.03] cursor-pointer"
+          >
             Premium 서비스
           </button>
         </nav>
@@ -673,9 +1024,25 @@ export default function App() {
                   </div>
                   <button
                     onClick={() => setResult(null)}
-                    className="px-5 py-2.5 rounded-2xl text-xs font-bold bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-gray-300 transform hover:scale-[1.03] active:scale-[0.98]"
+                    className="px-5 py-2.5 rounded-2xl text-xs font-bold bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-gray-300 transform hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
                   >
                     🔄 다시 분석하기
+                  </button>
+                </div>
+                
+                {/* Quick actions for premium and today's fortune */}
+                <div className="mt-5 pt-5 border-t border-white/5 flex flex-wrap gap-3">
+                  <button
+                    onClick={handleOpenTodayFortune}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 text-emerald-300 border border-emerald-500/20 hover:border-emerald-500/30 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                  >
+                    🍀 오늘의 총운 스캔
+                  </button>
+                  <button
+                    onClick={handleOpenPremium}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500/10 to-purple-500/10 hover:from-amber-500/20 hover:to-purple-500/20 text-amber-300 border border-amber-500/20 hover:border-amber-500/30 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                  >
+                    💎 Premium AI 서비스 (대운/궁합/진로)
                   </button>
                 </div>
               </div>
@@ -909,6 +1276,38 @@ export default function App() {
 
               </div>
 
+              {/* AI DEEP READING CARD */}
+              <div className="glass-panel-glow p-6 md:p-8 rounded-3xl border border-amber-500/20 relative overflow-hidden mt-8 shadow-[0_0_30px_rgba(245,158,11,0.1)]">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full filter blur-2xl" />
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-xl">🔮</span>
+                  <h3 className="text-md sm:text-lg font-extrabold tracking-tight bg-gradient-to-r from-amber-400 to-purple-400 bg-clip-text text-transparent">
+                    AI 우주 나침반 영혼 솔루션 (Gemini Deep Reading)
+                  </h3>
+                  <span className="text-[10px] bg-amber-400/20 text-amber-300 font-extrabold px-2 py-0.5 rounded-full border border-amber-400/20">LIVE AI</span>
+                </div>
+                
+                {aiSajuLoading ? (
+                  <div className="space-y-4 animate-pulse py-4">
+                    <div className="h-4 bg-white/10 rounded-full w-3/4" />
+                    <div className="h-4 bg-white/10 rounded-full w-5/6" />
+                    <div className="h-4 bg-white/10 rounded-full w-2/3" />
+                    <div className="h-4 bg-white/10 rounded-full w-full" />
+                    <p className="text-xs text-amber-400/70 italic mt-2">우주 정렬 정보와 지장간 에너지를 연결하여 AI가 심층 풀이 보고서를 집필하고 있습니다...</p>
+                  </div>
+                ) : aiSajuReading ? (
+                  <div className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap break-keep tracking-wide space-y-4 font-normal">
+                    {aiSajuReading}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-gray-300 text-sm leading-relaxed break-keep tracking-wide">
+                      {result.mainStrengths}
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* SHARE OR RESET ACTIONS */}
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <button
@@ -930,6 +1329,271 @@ export default function App() {
         </div>
 
       </main>
+
+      {/* TODAY'S FORTUNE MODAL */}
+      {isTodayFortuneOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="glass-panel-glow w-full max-w-2xl rounded-3xl p-6 md:p-8 relative overflow-hidden max-h-[85vh] overflow-y-auto">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full filter blur-xl" />
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/5">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🍀</span>
+                <h3 className="text-lg font-bold text-white tracking-tight">오늘의 우주 총운</h3>
+              </div>
+              <button 
+                onClick={() => setIsTodayFortuneOpen(false)}
+                className="text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            {!result ? (
+              <div className="text-center py-8 space-y-4">
+                <p className="text-gray-300 text-sm leading-relaxed break-keep">
+                  아직 사주 분석이 진행되지 않았습니다.<br/>
+                  메인 화면에서 생년월일시를 먼저 입력하고 분석을 완료하시면, 당신의 일주 기운과 연동된 '맞춤형 오늘의 총운'이 활성화됩니다!
+                </p>
+                <div className="h-px bg-white/5 my-6" />
+                <h4 className="text-sm font-extrabold text-amber-400">⚡ 보너스: 오늘의 오행 우주 카드 뽑기</h4>
+                <p className="text-xs text-gray-400 mb-4">재미로 오늘 하루 나를 이끄는 에너지 카드를 한 장 뽑아보세요!</p>
+                
+                {drawnCosmicCard ? (
+                  <div className="p-5 rounded-2xl bg-white/5 border border-white/10 max-w-sm mx-auto shadow-inner space-y-2 animate-slide-up">
+                    <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Drawn Cosmic Card</span>
+                    <h5 className="text-md font-extrabold text-white">{drawnCosmicCard.title}</h5>
+                    <p className="text-xs text-gray-300 leading-relaxed break-keep pt-1">{drawnCosmicCard.desc}</p>
+                    <button 
+                      onClick={handleDrawCosmicCard}
+                      className="mt-3 text-[10px] font-bold text-gray-400 hover:text-white underline cursor-pointer"
+                    >
+                      다시 뽑기
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={handleDrawCosmicCard}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 text-black font-extrabold text-xs shadow-md transition-all cursor-pointer"
+                  >
+                    🔮 카드 한 장 뽑기
+                  </button>
+                )}
+              </div>
+            ) : todayFortuneLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="w-12 h-12 rounded-full border-2 border-emerald-500/20 border-t-emerald-400 animate-spin" />
+                <p className="text-sm text-emerald-400 animate-pulse">{todayFortuneLoadingText}</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-5 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 text-emerald-300/90 text-xs flex items-center gap-2 mb-4 leading-relaxed">
+                  <span>💡</span>
+                  <p className="break-keep font-medium">당신의 일주 [{result.pillars.dayPillar.stem.char}{result.pillars.dayPillar.branch.char}] 기운에 우주 주파수를 스캔한 맞춤 분석입니다.</p>
+                </div>
+                <div className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap break-keep tracking-wide space-y-2 bg-black/40 p-5 rounded-2xl border border-white/5 max-h-[45vh] overflow-y-auto">
+                  {todayFortuneResult}
+                </div>
+              </div>
+            )}
+            
+            {/* Close action */}
+            <div className="mt-6 pt-4 border-t border-white/5 flex justify-end">
+              <button 
+                onClick={() => setIsTodayFortuneOpen(false)}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-gray-300 cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PREMIUM SERVICES MODAL */}
+      {isPremiumOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="glass-panel-glow w-full max-w-2xl rounded-3xl p-6 md:p-8 relative overflow-hidden max-h-[85vh] overflow-y-auto">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full filter blur-xl" />
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/5">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💎</span>
+                <h3 className="text-lg font-bold text-white tracking-tight">AI 프리미엄 명리학 서비스</h3>
+              </div>
+              <button 
+                onClick={() => setIsPremiumOpen(false)}
+                className="text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            {!result ? (
+              <div className="text-center py-8 space-y-4">
+                <p className="text-gray-300 text-sm leading-relaxed break-keep">
+                  아직 본인 사주 분석이 완료되지 않았습니다.<br/>
+                  메인 화면에서 본인의 생년월일시를 먼저 입력하고 분석하신 후에, 프리미엄 AI 보고서(대운/궁합/재물)를 신청하실 수 있습니다.
+                </p>
+                <div className="pt-4">
+                  <button 
+                    onClick={() => setIsPremiumOpen(false)}
+                    className="px-6 py-2.5 rounded-xl bg-amber-500 text-black font-extrabold text-xs shadow-md transition-all cursor-pointer"
+                  >
+                    사주 입력하러 가기
+                  </button>
+                </div>
+              </div>
+            ) : premiumLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="w-12 h-12 rounded-full border-2 border-purple-500/20 border-t-purple-400 animate-spin" />
+                <p className="text-sm text-purple-400 animate-pulse">{premiumLoadingText}</p>
+              </div>
+            ) : premiumResult ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">AI Premium Report</span>
+                  <button 
+                    onClick={() => setPremiumResult("")}
+                    className="text-xs font-bold text-purple-400 hover:text-purple-300 underline cursor-pointer"
+                  >
+                    다른 보고서 신청
+                  </button>
+                </div>
+                <div className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap break-keep tracking-wide bg-black/45 p-6 rounded-2xl border border-white/5 max-h-[45vh] overflow-y-auto">
+                  {premiumResult}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                <p className="text-xs text-gray-400 tracking-wider font-semibold uppercase">보고서 유형 선택</p>
+                
+                {/* Selection Cards */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { id: 'daewun', title: '💎 대운·세운 리포트', desc: '평생의 운세 흐름 및 향후 5개년 로드맵' },
+                    { id: 'gunghap', title: '🔗 프리미엄 인연 궁합', desc: '상대방과의 오행 보완 및 연애/소통 궁합' },
+                    { id: 'career', title: '💰 진로 & 재물 청사진', desc: '나에게 맞는 산업군 및 재물 개운법 Blueprint' }
+                  ].map((service) => (
+                    <button
+                      key={service.id}
+                      type="button"
+                      onClick={() => setSelectedPremiumService(service.id)}
+                      className={`p-4 rounded-2xl text-left border flex flex-col justify-between min-h-[110px] transition-all cursor-pointer ${
+                        selectedPremiumService === service.id 
+                          ? 'bg-purple-500/10 border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.15)] text-white' 
+                          : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:border-white/10'
+                      }`}
+                    >
+                      <span className="text-xs font-extrabold break-keep">{service.title}</span>
+                      <span className="text-[9px] leading-relaxed break-keep mt-2 block opacity-75">{service.desc}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Gunghap Form */}
+                {selectedPremiumService === 'gunghap' && (
+                  <div className="p-5 rounded-2xl bg-black/30 border border-white/5 space-y-4 animate-slide-up">
+                    <p className="text-xs font-bold text-amber-400 uppercase tracking-widest">상대방 정보 입력</p>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-gray-500 font-bold mb-1">성함</label>
+                        <input 
+                          type="text" 
+                          placeholder="상대방 이름"
+                          value={partnerName}
+                          onChange={(e) => setPartnerName(e.target.value)}
+                          className="w-full glass-input px-3 py-2 rounded-xl text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-gray-500 font-bold mb-1">성별</label>
+                        <div className="grid grid-cols-2 gap-2 p-0.5 rounded-xl bg-black/40 border border-white/5">
+                          <button
+                            type="button"
+                            onClick={() => setPartnerGender('male')}
+                            className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                              partnerGender === 'male' 
+                                ? 'bg-white/10 text-white' 
+                                : 'text-gray-500'
+                            }`}
+                          >
+                            🕺 남성
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPartnerGender('female')}
+                            className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                              partnerGender === 'female' 
+                                ? 'bg-white/10 text-white' 
+                                : 'text-gray-500'
+                            }`}
+                          >
+                            💃 여성
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-gray-500 font-bold mb-1">음양력</label>
+                        <div className="grid grid-cols-3 gap-1 p-0.5 rounded-xl bg-black/40 border border-white/5">
+                          {['solar', 'lunar_normal', 'lunar_leap'].map((type) => (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setPartnerCalendarType(type)}
+                              className={`py-1.5 rounded-lg text-[9px] font-bold transition-all cursor-pointer ${
+                                partnerCalendarType === type 
+                                  ? 'bg-white/10 text-white' 
+                                  : 'text-gray-500'
+                              }`}
+                            >
+                              {type === 'solar' ? '양력' : type === 'lunar_normal' ? '평달' : '윤달'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-gray-500 font-bold mb-1">생년월일</label>
+                        <input 
+                          type="date" 
+                          value={partnerBirthDate}
+                          onChange={(e) => setPartnerBirthDate(e.target.value)}
+                          className="w-full glass-input px-3 py-2 rounded-xl text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleGeneratePremiumReport}
+                  className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs tracking-wider transition-all shadow-[0_0_15px_rgba(168,85,247,0.3)] cursor-pointer"
+                >
+                  🚀 AI 프리미엄 분석 보고서 생성
+                </button>
+              </div>
+            )}
+            
+            {/* Close action */}
+            <div className="mt-6 pt-4 border-t border-white/5 flex justify-end">
+              <button 
+                onClick={() => setIsPremiumOpen(false)}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-gray-300 cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FOOTER */}
       <footer className="relative z-10 w-full max-w-6xl mx-auto px-6 mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500 text-center md:text-left">
