@@ -172,6 +172,25 @@ const SajuCharacterBlock = ({ charData }) => {
   );
 };
 
+// Promise timeout utility to prevent API hang or infinite loading.
+const timeoutPromise = (ms, promise) => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error("우주 연결 시간 초과 (Timeout)"));
+    }, ms);
+    
+    promise
+      .then((res) => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+};
+
 // Premium custom fallback report engine that generates highly-detailed (500+ characters), distinct, and dynamic reports.
 const getPremiumFallbackReport = (serviceType, result, partnerDetails = null) => {
   if (!result) return "";
@@ -349,7 +368,7 @@ const generateSajuInsightWithGemini = async (sajuData) => {
    - 🪐 [영혼의 성장 무기와 미래 나침반]: 인생의 거친 파도를 넘을 수 있는 당신만의 핵심 무기와 지혜의 조언
   `;
 
-  const result = await model.generateContent(prompt);
+  const result = await timeoutPromise(8000, model.generateContent(prompt));
   const response = await result.response;
   return response.text();
 };
@@ -386,7 +405,7 @@ const generateSajuInsightWithGemini = async (sajuData) => {
 2. 오늘 하루 맞닥뜨릴 에너지 흐름, 대인관계 팁, 그리고 오늘 실천하면 좋은 행동을 아주 정성스럽게 작성해주세요.
 3. 최소 400자 이상으로 길고 구체적으로 적어주세요.
         `;
-        const genResult = await model.generateContent(prompt);
+        const genResult = await timeoutPromise(6000, model.generateContent(prompt));
         const response = await genResult.response;
         setTodayFortuneResult(response.text());
         setTodayFortuneLoading(false);
